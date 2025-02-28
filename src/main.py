@@ -17,3 +17,25 @@ calculator = EnergyCalculator(fixed_structure)
 energy = calculator.compute_energy()
 
 print(f"✅ Final Potential Energy: {energy}")
+
+# Define translation vector [dx, dy, dz]
+translation_vector = np.array([10.0, 0.0, 0.0])  # Move chain B by 10 Å along X-axis
+
+# Define rotation matrix (90-degree rotation around Z-axis)
+theta = np.radians(90)
+rotation_matrix = np.array([
+    [np.cos(theta), -np.sin(theta), 0],
+    [np.sin(theta),  np.cos(theta), 0],
+    [0, 0, 1]
+])
+
+# Move only chain D
+modified_structure = protein.displace_chain(protein.structure, chain_id="D", translation=translation_vector, rotation_matrix=rotation_matrix)
+
+# ✅ Use modified_structure when saving
+protein.save_pdb(modified_structure, "data/modified.pdb")  # ✅ Now compatible with your original function
+
+calculator = EnergyCalculator(modified_structure)
+energy = calculator.compute_energy()
+
+print(f"✅ Final Potential Energy: {energy}")

@@ -4,38 +4,31 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from protein import *
+from energy  import *
 
 # Step 1: Fix missing side chains in-memory
 protein = Protein("data/incomplete.pdb", "data/aa_template.pdb")
 fixed_structure = protein.copy_side_chains()  # Returns modified structure
 
+
 # Step 2: Save the fixed structure to a PDB file
 protein.save_pdb(fixed_structure, "data/fixed_protein.pdb")
 
-# Step 3: Compute CHARMM energy using OpenMM (directly from structure)
-calculator = EnergyCalculator(fixed_structure)
-energy = calculator.compute_energy()
+# ✅ Pass Biopython Structure to EnergyCalculator
+energy_calculator = EnergyCalculator(fixed_structure)
 
-print(f"✅ Final Potential Energy: {energy}")
+# ✅ Compute Non-Bonded Energies Using OpenMM
+#pairwise_energies = energy_calculator.compute_pairwise_nonbonded_energy(intermolecular_only=True)
 
-# Define translation vector [dx, dy, dz]
-translation_vector = np.array([10.0, 0.0, 0.0])  # Move chain B by 10 Å along X-axis
+#print("\n🔍 Sorted Pairwise Non-Bonded Energies:")
+#sorted_energies = sorted(pairwise_energies.items(), key=lambda x: abs(x[1]), reverse=True)
 
-# Define rotation matrix (90-degree rotation around Z-axis)
-theta = np.radians(90)
-rotation_matrix = np.array([
-    [np.cos(theta), -np.sin(theta), 0],
-    [np.sin(theta),  np.cos(theta), 0],
-    [0, 0, 1]
-])
+#for (res1, res2), energy in sorted_energies[:20]:  # Show top 20 strongest interactions
+#    print(f"{res1} ↔ {res2}: {energy:.3f} kcal/mol")
 
-# Move only chain D
-modified_structure = protein.displace_chain(protein.structure, chain_id="D", translation=translation_vector, rotation_matrix=rotation_matrix)
+# ✅ Select Chain to Move (e.g., "A")
+moving_chain = "D"
 
-# ✅ Use modified_structure when saving
-protein.save_pdb(modified_structure, "data/modified.pdb")  # ✅ Now compatible with your original function
+# ✅ Run Monte Carlo with Pairwise Non-Bonded Energy Scoring
+energy_calculator.monte_carlo_sampling(moving_chain)
 
-calculator = EnergyCalculator(modified_structure)
-energy = calculator.compute_energy()
-
-print(f"✅ Final Potential Energy: {energy}")

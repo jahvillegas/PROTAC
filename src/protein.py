@@ -4,6 +4,10 @@ from openmm.app import *
 from openmm import *
 from openmm.unit import *
 import numpy as np
+from openmm import Platform
+import random
+platform = Platform.getPlatformByName('CPU')
+platform.setPropertyDefaultValue('DeterministicForces', 'true')
 
 forcefield_path = "/Users/josevillegas/Library/Python/3.9/lib/python/site-packages/openmm/app/data/"
 forcefield = ForceField(forcefield_path + 'charmm36.xml', forcefield_path + 'charmm36/water.xml')
@@ -98,82 +102,4 @@ class Protein:
         io.set_structure(structure)
         io.save(output_pdb)
         print(f"📂 Saved fixed structure as: {output_pdb}")
-
-    def displace_chain(self, structure, chain_id, translation=None, rotation_matrix=None):
-        """
-        Mov e one chain while keeping the others fixed.
-
-        Parameters:
-        - structure: The PDB structure to modify
-        - chain_id (str): Chain identifier to move (e.g., "B").
-        - translation (numpy array): A vector [dx, dy, dz] for translation.
-        - rotation_matrix (numpy array): A 3x3 rotation matrix.
-    
-        Returns:
-        - structure: The modified PDB structure
-        """
-        print(f"🔄 Displacing chain {chain_id}...")
-
-        model = next(iter(structure))  # Get the first model
-        if chain_id not in model:
-            print(f"❌ Chain {chain_id} not found! Skipping transformation.")
-            return structure
-
-        chain = model[chain_id]  # Get the chain to move
-
-        for residue in chain:
-            for atom in residue:
-                old_coord = atom.get_coord()
-                new_coord = old_coord
-
-                # Apply translation if provided
-                if translation is not None:
-                    new_coord += translation  # Apply translation
-
-                # Apply rotation if provided
-                if rotation_matrix is not None:
-                    new_coord = np.dot(rotation_matrix, new_coord)  # Apply rotation
-
-                atom.set_coord(new_coord)
-
-        print(f"✅ Chain {chain_id} displaced successfully!")
-        return structure  # ✅ Return modified structure
-
-class EnergyCalculator:
-    def __init__(self, structure):
-        """Initialize OpenMM and load the structure object directly."""
-        self.structure = structure  # Store structure in memory
-        self.pdb = self.structure_to_pdb(self.structure)  # Convert to PDB object
-
-        # Load CHARMM force field
-        self.forcefield = ForceField('charmm36.xml', 'charmm36/water.xml')
-
-        # Create a system
-        self.modeller = Modeller(self.pdb.topology, self.pdb.positions)
-        self.modeller.addHydrogens(self.forcefield)
-
-        self.system = self.forcefield.createSystem(self.modeller.topology, 
-                                                   nonbondedMethod=NoCutoff, 
-                                                   constraints=HBonds)
-
-        self.integrator = LangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds)
-        self.simulation = Simulation(self.modeller.topology, self.system, self.integrator)
-        self.simulation.context.setPositions(self.modeller.positions)
-
-    def structure_to_pdb(self, structure):
-        """Convert a Biopython structure object to an OpenMM PDBFile object (in memory)."""
-        io = PDBIO()
-        io.set_structure(structure)
-        import io as sys_io
-        buffer = sys_io.StringIO()
-        io.save(buffer)
-        buffer.seek(0)
-        return PDBFile(buffer)
-
-    def compute_energy(self):
-        """Compute the potential energy of the system."""
-        state = self.simulation.context.getState(getEnergy=True)
-        energy = state.getPotentialEnergy()
-        print(f"⚡ Potential Energy: {energy}")
-        return energy
 
